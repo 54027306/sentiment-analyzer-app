@@ -1,0 +1,42 @@
+import pandas as pd
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+import joblib
+
+# Download necessary NLTK data
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+# Sample dataset — replace this with your actual CSV file
+df = pd.read_csv("your_dataset.csv")  # Make sure it has 'text' and 'tag' or rename columns accordingly
+
+# Rename for consistency if needed
+df.rename(columns={'text': 'review', 'tag': 'sentiment'}, inplace=True)
+
+# Text preprocessing
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r"http\S+|www\S+", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", "", text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    tokens = text.split()
+    tokens = [lemmatizer.lemmatize(t) for t in tokens if t not in stop_words and len(t) > 2]
+    return " ".join(tokens)
+
+df['processed_review'] = df['review'].apply(preprocess)
+
+# Vectorization
+tfidf = TfidfVectorizer(max_features=5000)
+X_tfidf = tfidf.fit_transform(df['processed_review'])
+
+# ✅ Save the vectorizer
+joblib.dump(tfidf, "tfidf_vectorizer.pkl")
+
+print("✅ tfidf_vectorizer.pkl saved successfully!")
