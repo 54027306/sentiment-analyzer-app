@@ -1,0 +1,59 @@
+import pandas as pd
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
+import joblib
+
+# Download necessary NLTK data
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+# Load dataset (replace with your own CSV if needed)
+df = pd.read_csv("your_dataset.csv")  # change this to your actual file
+
+# Rename columns if necessary
+df.rename(columns={'text': 'review', 'tag': 'sentiment'}, inplace=True)
+
+# Preprocessing
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r"http\S+|www\S+", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", "", text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    tokens = text.split()
+    tokens = [lemmatizer.lemmatize(t) for t in tokens if t not in stop_words and len(t) > 2]
+    return " ".join(tokens)
+
+df['processed_review'] = df['review'].apply(preprocess)
+
+# Split data
+X = df['processed_review']
+y = df['sentiment']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Vectorization
+vectorizer = TfidfVectorizer(max_features=5000)
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+# Train model
+model = LogisticRegression()
+model.fit(X_train_vec, y_train)
+
+# Evaluate
+print(classification_report(y_test, model.predict(X_test_vec)))
+
+# Save model and vectorizer
+joblib.dump(model, "best_sentiment_model.pkl")
+joblib.dump(vectorizer, "tfidf_vectorizer.pkl")
+
+print("✅ Model and vectorizer saved successfully!")
